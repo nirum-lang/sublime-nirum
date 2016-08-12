@@ -1,0 +1,139 @@
+%YAML 1.2
+---
+name: Nirum
+file_extensions: [nrm, nirum]
+scope: source.nirum
+
+variables:
+  ident: '[\-_a-zA-Z][\-\w]*/?(?:[\-_a-zA-Z][\-\w]*)?'
+
+contexts:
+  main:
+    # enum
+    - match: >-
+        (?x)
+          (\b(?:enum)\b)
+          \s+({{ident}})
+          \s*(=)
+      captures:
+        1: storage.type
+        2: entity.name
+        3: keyword.operator.assignment
+      push:
+        - match: ;
+          pop: true
+        - match: (\|)
+          scope: keyword.operator
+        - include: general
+    - match: \b(enum)\b
+      scope: storage.type
+    # boxed
+    - match: \b(boxed)\b
+      scope: storage.type
+    # record
+    - match: >-
+        (?x)
+          (\b(?:record)\b)
+          \s+({{ident}})
+          \s*(\()
+      captures:
+        1: storage.type
+        2: entity.name
+        3: punctuation.section.group.begin
+      push:
+        - match: ;
+          pop: true
+        - include: fields
+        - include: general
+    - match: \b(record)\b
+      scope: storage.type
+    # union
+    - match: \b(union)\b
+      scope: storage.type
+    # service
+    - match: >-
+        (?x)
+          (\b(?:service)\b)
+          \s+({{ident}})
+          \s*(\()
+      captures:
+        1: storage.type
+        2: entity.name
+        3: punctuation.section.group.begin
+      push:
+        - match: ;
+          pop: true
+        - include: fields
+        - include: general
+    - match: \b(service)\b
+      scope: storage.type
+    # etc
+    - include: general
+
+  fields:
+    - match: ({{ident}})\s+({{ident}})
+      captures:
+        1: storage.type
+        2: string.unquoted
+    - match: ({{ident}})\s*(\?)\s+({{ident}})
+      captures:
+        1: storage.type
+        2: keyword.other
+        3: string.unquoted
+    - match: (\[)\s*({{ident}})\s*(\])\s+({{ident}})
+      captures:
+        1: keyword.other
+        2: storage.type
+        3: keyword.other
+        4: string.unquoted
+    - match: (\{)\s*({{ident}})\s*(\})\s+({{ident}})
+      captures:
+        1: keyword.other
+        2: storage.type
+        3: keyword.other
+        4: string.unquoted
+    - include: map_type
+
+  map_type:
+    - match: \{
+      scope: keyword.other
+      push:
+        - match: \}
+          scope: keyword.other
+          pop: true
+        - match: ({{ident}})\s*(:)
+          captures:
+            1: storage.type
+            2: punctuation.accessor
+        - match: ({{ident}})\s*(\?)
+          captures:
+            1: storage.type
+            2: keyword.other
+        - match: (\[)\s*({{ident}})\s*(\])
+          captures:
+            1: keyword.other
+            2: storage.type
+            3: keyword.other
+        - match: (\{)\s*({{ident}})\s*(\})
+          captures:
+            1: keyword.other
+            2: storage.type
+            3: keyword.other
+        - match: ({{ident}})
+          scope: storage.type
+        - include: map_type
+
+  general:
+    # comma
+    - match: \,
+      scope: punctuation.separator
+    # line comment
+    - match: \#
+      scope: punctuation.definition.comment
+      push:
+        - meta_scope: comment.line
+        - match: $\n?
+          pop: true
+    # identifier
+    - match: ({{ident}})
+      scope: string.unquoted
