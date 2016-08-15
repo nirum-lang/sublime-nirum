@@ -28,6 +28,20 @@ contexts:
     - match: \b(enum)\b
       scope: storage.type
     # boxed
+    - match: >-
+        (?x)
+          (\b(?:boxed)\b)
+          \s+({{ident}})
+          \s*(\()
+      captures:
+        1: storage.type
+        2: entity.name
+        3: punctuation.section.group.begin
+      push:
+        - match: \)
+          scope: punctuation.section.block.end
+          pop: true
+        - include: type
     - match: \b(boxed)\b
       scope: storage.type
     # record
@@ -41,13 +55,37 @@ contexts:
         2: entity.name
         3: punctuation.section.group.begin
       push:
-        - match: ;
+        - match: \)
+          scope: punctuation.section.block.end
           pop: true
         - include: fields
         - include: general
     - match: \b(record)\b
       scope: storage.type
     # union
+    - match: >-
+        (?x)
+          (\b(?:union)\b)
+          \s+({{ident}})
+          \s*(=)
+      captures:
+        1: storage.type
+        2: entity.name
+        3: keyword.operator.assignment
+      push:
+        - match: \(
+          push:
+            - match: \)
+              scope: punctuation.section.block.end
+              pop: true
+            - include: params
+            - include: general
+        - match: ;
+          scope: keyword.other
+          pop: true
+        - match: (\|)
+          scope: keyword.operator
+        - include: general
     - match: \b(union)\b
       scope: storage.type
     # service
@@ -61,72 +99,199 @@ contexts:
         2: entity.name
         3: punctuation.section.group.begin
       push:
-        - match: ;
+        - match: \)
+          scope: punctuation.section.block.end
           pop: true
         - include: fields
+        - include: method_params
         - include: general
     - match: \b(service)\b
       scope: storage.type
     # etc
     - include: general
 
-  fields:
-    - match: ({{ident}})\s+({{ident}})
-      captures:
-        1: storage.type
-        2: string.unquoted
-    - match: ({{ident}})\s*(\?)\s+({{ident}})
-      captures:
-        1: storage.type
-        2: keyword.other
-        3: string.unquoted
-    - match: (\[)\s*({{ident}})\s*(\])\s+({{ident}})
-      captures:
-        1: keyword.other
-        2: storage.type
-        3: keyword.other
-        4: string.unquoted
-    - match: (\{)\s*({{ident}})\s*(\})\s+({{ident}})
-      captures:
-        1: keyword.other
-        2: storage.type
-        3: keyword.other
-        4: string.unquoted
-    - include: map_type
+  method_params:
+    - match: \(
+      push:
+        - match: \)
+          scope: punctuation.section.block.end
+          pop: true
+        - include: params
+        - include: general
 
-  map_type:
+  type:
+    - match: \[
+      scope: keyword.other
+      push: t_list
     - match: \{
       scope: keyword.other
+      push: t_map
+    - match: '[\]\}]'
+      scope: invalid.illegal
+    - match: \?
+      scope: keyword.other
+    - match: ({{ident}})
+      scope: storage.type
+
+  fields:
+    - match: \[
+      scope: keyword.other
+      push: list
+    - match: \{
+      scope: keyword.other
+      push: map
+    - match: '[\]\}]'
+      scope: invalid.illegal
+    - match: ({{ident}})
+      scope: storage.type
       push:
-        - match: \}
+        - match: \?
+          scope: keyword.other
+        - match: ({{ident}})
+          scope: string.unquoted
+          pop: true
+        - include: general
+
+  params:
+    - match: \[
+      scope: keyword.other
+      push: p_list
+    - match: \{
+      scope: keyword.other
+      push: p_map
+    - match: '[\]\}]'
+      scope: invalid.illegal
+    - match: ({{ident}})
+      scope: storage.type
+      push:
+        - match: \?
           scope: keyword.other
           pop: true
-        - match: ({{ident}})\s*(:)
-          captures:
-            1: storage.type
-            2: punctuation.accessor
-        - match: ({{ident}})\s*(\?)
-          captures:
-            1: storage.type
-            2: keyword.other
-        - match: (\[)\s*({{ident}})\s*(\])
-          captures:
-            1: keyword.other
-            2: storage.type
-            3: keyword.other
-        - match: (\{)\s*({{ident}})\s*(\})
-          captures:
-            1: keyword.other
-            2: storage.type
-            3: keyword.other
         - match: ({{ident}})
-          scope: storage.type
-        - include: map_type
+          scope: variable.parameter
+          pop: true
+        - include: general
+
+  t_list:
+    - match: \?
+      scope: keyword.other
+    - match: \[
+      push: t_list
+    - match: \{
+      scope: keyword.other
+      push: t_map
+    - match: ({{ident}})
+      scope: storage.type
+    - match: \}
+      scope: invalid.illegal
+    - match: \]
+      scope: keyword.other
+      pop: true
+    - include: general
+
+  t_map:
+    - match: \?
+      scope: keyword.other
+    - match: \[
+      push: t_list
+    - match: \{
+      scope: keyword.other
+      push: t_map
+    - match: ({{ident}})
+      scope: storage.type
+    - match: \]
+      scope: invalid.illegal
+    - match: \}
+      scope: keyword.other
+      pop: true
+    - include: general
+
+  list:
+    - match: \?
+      scope: keyword.other
+    - match: \[
+      push: t_list
+    - match: \{
+      scope: keyword.other
+      push: t_map
+    - match: ({{ident}})
+      scope: storage.type
+    - match: \]
+      scope: keyword.other
+      set:
+        - match: '[\]\}\)]'
+          scope: invalid.illegal
+        - match: ({{ident}})
+          scope: string.unquoted
+          pop: true
+    - include: general
+
+  p_list:
+    - match: \?
+      scope: keyword.other
+    - match: \[
+      push: t_list
+    - match: \{
+      scope: keyword.other
+      push: t_map
+    - match: ({{ident}})
+      scope: storage.type
+    - match: \]
+      scope: keyword.other
+      set:
+        - match: '[\]\}\)]'
+          scope: invalid.illegal
+        - match: ({{ident}})
+          scope: variable.parameter
+          pop: true
+    - include: general
+
+  map:
+    - match: \?
+      scope: keyword.other
+    - match: \[
+      push: t_list
+    - match: \{
+      scope: keyword.other
+      push: t_map
+    - match: ({{ident}})
+      scope: storage.type
+    - match: \}
+      scope: keyword.other
+      set:
+        - match: '[\]\}\)]'
+          scope: invalid.illegal
+        - match: ({{ident}})
+          scope: string.unquoted
+          pop: true
+    - include: general
+
+  p_map:
+    - match: \?
+      scope: keyword.other
+    - match: \[
+      push: t_list
+    - match: \{
+      scope: keyword.other
+      push: t_map
+    - match: ({{ident}})
+      scope: storage.type
+    - match: \}
+      scope: keyword.other
+      set:
+        - match: '[\]\}\)]'
+          scope: invalid.illegal
+        - match: ({{ident}})
+          scope: variable.parameter
+          pop: true
+    - include: general
 
   general:
     # comma
     - match: \,
       scope: punctuation.separator
+    - match: \;
+      scope: keyword.other
     # line comment
     - match: \#
       scope: punctuation.definition.comment
