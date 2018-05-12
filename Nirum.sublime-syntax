@@ -27,10 +27,10 @@ contexts:
         - include: general
     - match: \b(enum)\b
       scope: storage.type
-    # boxed
+    # unboxed
     - match: >-
         (?x)
-          (\b(?:boxed)\b)
+          (\b(?:unboxed)\b)
           \s+({{ident}})
           \s*(\()
       captures:
@@ -42,7 +42,7 @@ contexts:
           scope: punctuation.section.block.end
           pop: true
         - include: type
-    - match: \b(boxed)\b
+    - match: \b(unboxed)\b
       scope: storage.type
     # record
     - match: >-
